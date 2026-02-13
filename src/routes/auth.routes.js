@@ -65,8 +65,57 @@ res.status(201).json({
 
 })
 
-authRouter.get("/login",async (req,res) => {
-    
+authRouter.post("/login",async (req,res) => {
+    const {username, email, password} = req.body
+ 
+    const user = await userModel.findOne({
+        $or:[
+            {
+                user: username
+            },
+            {
+                   email: email
+            }
+        ]   
+    })
+
+    if(!user){
+        return res.status(404).json({
+            message:"User not found"
+        })
+    }
+
+    const hash = crypto.createHash('sha256').update(password).digest('hex')
+
+    const isPasswordVallid = hash == user.password
+
+    if(!isPasswordVallid){
+        return res.status(401).json({
+            message:"password invalid"
+        })
+    }
+
+    const token = jwt.sign(
+        {
+          id: user._id
+        },
+        process.env.JWT_SECRET,
+        {
+            expiresIn:"1d"
+        }
+    )
+
+    res.cookie("token",token)
+
+    res.status(200).json({
+        message:"User loggedIn successfully.",
+        user:{
+            username:user.username,
+            email:user.email,
+            bio:user.bio,
+            profileImage:user.profileImage
+        }
+    })
 })
 
 module.exports = authRouter;
